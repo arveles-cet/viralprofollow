@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Takipçi Botu - Giriş</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 450px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 0.95em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.95em;
+        }
+        
+        .success {
+            color: #27ae60;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.95em;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            color: #1976d2;
+            line-height: 1.6;
+        }
+        
+        .info-box strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="header">
+            <h1>📱 Instagram Bot</h1>
+            <p class="subtitle">Otomatik Takip Sistemi</p>
+        </div>
+        
+        <form onsubmit="login(event)" id="loginForm">
+            <div class="form-group">
+                <label>Instagram Kullanıcı Adı</label>
+                <input type="text" id="username" placeholder="kullanici_adi" required autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label>Instagram Şifresi</label>
+                <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            
+            <button type="submit" id="loginBtn">🚀 Giriş Yap</button>
+            
+            <div id="message"></div>
+        </form>
+        
+        <div class="info-box">
+            <strong>💡 Nasıl Çalışır:</strong>
+            • Instagram hesabınızla giriş yapın<br>
+            • Takip etmek istediğiniz kullanıcı adını girin<br>
+            • Sistem otomatik olarak sizin hesabınızla takip eder<br>
+            • Günlük 200 takip limiti vardır
+        </div>
+    </div>
+    
+    <script>
+        async function login(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+            const loginBtn = document.getElementById('loginBtn');
+            
+            messageDiv.className = '';
+            messageDiv.textContent = '';
+            loginBtn.disabled = true;
+            loginBtn.textContent = '⏳ Giriş yapılıyor...';
+            
+            try {
+                const response = await fetch('/api/user/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password})
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    messageDiv.className = 'success';
+                    messageDiv.textContent = '✅ Giriş başarılı! Yönlendiriliyorsunuz...';
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else {
+                    messageDiv.className = 'error';
+                    messageDiv.textContent = '❌ ' + (data.error || 'Giriş başarısız');
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = '🚀 Giriş Yap';
+                }
+            } catch (error) {
+                messageDiv.className = 'error';
+                messageDiv.textContent = '❌ Bağlantı hatası. Lütfen tekrar deneyin.';
+                loginBtn.disabled = false;
+                loginBtn.textContent = '🚀 Giriş Yap';
+            }
+        }
+    </script>
+</body>
+</html>

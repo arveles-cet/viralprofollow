@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Bot Paneli</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        h1 {
+            font-size: 2em;
+        }
+        
+        .user-info {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .logout-btn {
+            background: rgba(255,255,255,0.3);
+            border: 2px solid white;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.5);
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-card h3 {
+            color: #666;
+            font-size: 0.85em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .table th {
+            background: #f5f5f5;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .table tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .status-pending {
+            color: #f39c12;
+            font-weight: 600;
+        }
+        
+        .status-completed {
+            color: #27ae60;
+            font-weight: 600;
+        }
+        
+        .log-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .log-line {
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .log-success { color: #00ff00; }
+        .log-error { color: #ff4444; }
+        .log-info { color: #00aaff; }
+        .log-completed { color: #ffaa00; }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>📱 Instagram Bot</h1>
+            <div class="user-info" id="userInfo"></div>
+        </div>
+        <button class="logout-btn" onclick="logout()">Çıkış Yap</button>
+    </div>
+    
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Bugün Tamamlanan</h3>
+                <div class="number" id="stat_today">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Bugün Başarılı</h3>
+                <div class="number" id="stat_success">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Toplam Görev</h3>
+                <div class="number" id="stat_total">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Günlük İşlem</h3>
+                <div class="number" id="stat_actions">0/200</div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>🎯 Kullanıcı Takip Et</h2>
+            
+            <form onsubmit="createTask(event)">
+                <div class="form-group">
+                    <label>Hedef Instagram Kullanıcı Adı</label>
+                    <input type="text" id="target_username" placeholder="kullanici_adi" required>
+                </div>
+                
+                <button type="submit" id="followBtn">🚀 Takip Et</button>
+            </form>
+            
+            <div id="logs_container"></div>
+        </div>
+        
+        <div class="panel">
+            <h2>📋 Görev Geçmişi</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Hedef</th>
+                        <th>Durum</th>
+                        <th>Sonuç</th>
+                        <th>Tarih</th>
+                    </tr>
+                </thead>
+                <tbody id="tasks_table"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        const socket = io();
+        
+        socket.on('log_update', function(data) {
+            addLogLine(data);
+        });
+        
+        async function logout() {
+            await fetch('/api/user/logout', {method: 'POST'});
+            window.location.href = '/';
+        }
+        
+        async function createTask(event) {
+            event.preventDefault();
+            
+            const target = document.getElementById('target_username').value.trim();
+            const btn = document.getElementById('followBtn');
+            
+            if (!target) return;
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ İşleniyor...';
+            
+            try {
+                const response = await fetch('/api/user/create_task', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({target_username: target})
+                });
+                
+                if (response.ok) {
+                    document.getElementById('target_username').value = '';
+                    setTimeout(loadTasks, 1000);
+                    setTimeout(loadStats, 1000);
+                } else {
+                    const data = await response.json();
+                    alert('❌ ' + (data.error || 'Hata'));
+                }
+            } catch (error) {
+                alert('❌ Bağlantı hatası');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Takip Et';
+            }
+        }
+        
+        async function loadTasks() {
+            try {
+                const response = await fetch('/api/user/tasks');
+                const tasks = await response.json();
+                
+                const tbody = document.getElementById('tasks_table');
+                tbody.innerHTML = '';
+                
+                if (tasks.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999;">Henüz görev yok</td></tr>';
+                    return;
+                }
+                
+                tasks.forEach(task => {
+                    const statusClass = task.status === 'pending' ? 'status-pending' : 'status-completed';
+                    const statusText = task.status === 'pending' ? '⏳ Devam Ediyor' : '✅ Tamamlandı';
+                    const resultText = task.success ? '✅ Başarılı' : '❌ Başarısız';
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>@${task.target}</td>
+                            <td class="${statusClass}">${statusText}</td>
+                            <td>${resultText}</td>
+                            <td>${task.created}</td>
+                        </tr>
+                    `;
+                });
+            } catch (error) {
+                console.error(error);
+            }
+        }
+        
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/user/stats');
+                const data = await response.json();
+                
+                document.getElementById('stat_today').textContent = data.today_completed;
+                document.getElementById('stat_success').textContent = data.today_success;
+                document.getElementById('stat_total').textContent = data.total_tasks;
+                document.getElementById('stat_actions').textContent = `${data.daily_actions}/${data.daily_limit}`;
+            } catch (error) {
+                console.error(error);
+            }
+        }
+        
+        function addLogLine(data) {
+            let container = document.getElementById('logs_container');
+            if (!container.querySelector('.log-container')) {
+                container.innerHTML = '<div class="log-container" id="logs"></div>';
+            }
+            
+            const logClass = `log-${data.type}`;
+            const logsDiv = document.getElementById('logs');
+            logsDiv.innerHTML += `<div class="log-line ${logClass}">[${data.timestamp}] ${data.message}</div>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        loadTasks();
+        loadStats();
+        
+        setInterval(loadTasks, 5000);
+        setInterval(loadStats, 10000);
+    </script>
+</body>
+</html>

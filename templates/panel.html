@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Yönetim Paneli</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        h1 {
+            font-size: 2em;
+        }
+        
+        .logout-btn {
+            background: rgba(255,255,255,0.3);
+            border: 2px solid white;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.5);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .analytics-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .analytics-card h3 {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        
+        .analytics-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            background: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input, select, textarea {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 1em;
+            font-family: inherit;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .table th {
+            background: #f5f5f5;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .table tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .log-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .log-line {
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .log-success {
+            color: #00ff00;
+        }
+        
+        .log-error {
+            color: #ff4444;
+        }
+        
+        .log-info {
+            color: #00aaff;
+        }
+        
+        .log-completed {
+            color: #ffaa00;
+        }
+        
+        @media (max-width: 1024px) {
+            .analytics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Instagram Yönetim Paneli</h1>
+        <button class="logout-btn" onclick="logout()">Çıkış Yap</button>
+    </div>
+    
+    <div class="container">
+        <div class="analytics-grid" id="analytics"></div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('accounts')">👥 Hesaplar</button>
+            <button class="tab" onclick="switchTab('tasks')">🚀 Görevler</button>
+            <button class="tab" onclick="switchTab('proxies')">🌐 Proxy'ler</button>
+            <button class="tab" onclick="switchTab('schedule')">📅 Zamanlama</button>
+        </div>
+        
+        <!-- Hesaplar Tab -->
+        <div id="accounts" class="tab-content active">
+            <div class="panel">
+                <h2>Yeni Hesap Ekle</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Kullanıcı Adı</label>
+                        <input type="text" id="acc_username" placeholder="instagram_username">
+                    </div>
+                    <div class="form-group">
+                        <label>Şifre</label>
+                        <input type="password" id="acc_password" placeholder="••••••••">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Hesap Tipi</label>
+                        <select id="acc_type">
+                            <option value="bot">🤖 Bot Hesap</option>
+                            <option value="real">👤 Gerçek Hesap</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button onclick="addAccount()" style="width: 100%;">➕ Hesap Ekle</button>
+                
+                <h2 style="margin-top: 30px;">Hesaplar</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Kullanıcı Adı</th>
+                            <th>Tip</th>
+                            <th>Durum</th>
+                            <th>Bugünkü İşlem</th>
+                            <th>Son Kullanım</th>
+                        </tr>
+                    </thead>
+                    <tbody id="accounts_list"></tbody>
+                </table>
+                
+                <button onclick="checkHealth()" style="width: 100%; margin-top: 15px;">🔍 Sağlık Kontrolü Yap</button>
+            </div>
+        </div>
+        
+        <!-- Görevler Tab -->
+        <div id="tasks" class="tab-content">
+            <div class="panel">
+                <h2>Yeni Görev Oluştur</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Hedef Kullanıcı</label>
+                        <input type="text" id="target_username" placeholder="hedef_username">
+                    </div>
+                    <div class="form-group">
+                        <label>Takipçi Sayısı</label>
+                        <input type="number" id="follower_count" value="10" min="1" max="500">
+                    </div>
+                </div>
+                
+                <button onclick="createTask()" style="width: 100%;">🚀 Görevi Başlat</button>
+                
+                <h2 style="margin-top: 30px;">Görev Geçmişi</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Hedef</th>
+                            <th>Takipçi</th>
+                            <th>Başarı</th>
+                            <th>Durum</th>
+                            <th>Oluşturulma</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasks_list"></tbody>
+                </table>
+                
+                <div id="task_logs_container"></div>
+            </div>
+        </div>
+        
+        <!-- Proxy Tab -->
+        <div id="proxies" class="tab-content">
+            <div class="panel">
+                <h2>Proxy Ekle</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Proxy Adresi</label>
+                        <textarea id="proxy_input" placeholder="http://ip:port&#10;socks5://ip:port&#10;Satır satır ekleyebilirsiniz" rows="5"></textarea>
+                    </div>
+                </div>
+                
+                <button onclick="addProxies()" style="width: 100%;">➕ Proxy'ler Ekle</button>
+                
+                <h2 style="margin-top: 30px;">Aktif Proxy'ler</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Proxy</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody id="proxies_list"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Zamanlama Tab -->
+        <div id="schedule" class="tab-content">
+            <div class="panel">
+                <h2>Otomatik Görev Zamanla</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Hedef Kullanıcı</label>
+                        <input type="text" id="sched_target" placeholder="hedef_username">
+                    </div>
+                    <div class="form-group">
+                        <label>Takipçi Sayısı</label>
+                        <input type="number" id="sched_count" value="10" min="1">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Çalışma Saati</label>
+                        <input type="time" id="sched_time">
+                    </div>
+                    <div class="form-group">
+                        <label>Tekrar Türü</label>
+                        <select id="sched_repeat">
+                            <option value="once">Bir Kez</option>
+                            <option value="daily">Günlük</option>
+                            <option value="weekly">Haftalık</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button onclick="scheduleTask()" style="width: 100%;">📅 Zamanla</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const socket = io();
+        const API_URL = '/api';
+        
+        socket.on('log_update', function(data) {
+            addLogLine(data);
+        });
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            if (tabName === 'accounts') loadAccounts();
+            if (tabName === 'tasks') loadTasks();
+            if (tabName === 'proxies') loadProxies();
+        }
+        
+        async function logout() {
+            await fetch('/api/admin/logout', {method: 'POST'});
+            window.location.href = '/';
+        }
+        
+        async function addAccount() {
+            const username = document.getElementById('acc_username').value;
+            const password = document.getElementById('acc_password').value;
+            const account_type = document.getElementById('acc_type').value;
+            
+            if (!username || !password) {
+                alert('❌ Lütfen tüm alanları doldurun');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/add_account`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password, account_type})
+                });
+                
+                if (response.ok) {
+                    alert('✅ Hesap başarıyla eklendi!');
+                    document.getElementById('acc_username').value = '';
+                    document.getElementById('acc_password').value = '';
+                    loadAccounts();
+                } else {
+                    alert('❌ Bu hesap zaten ekli');
+                }
+            } catch (error) {
+                alert('❌ Hata: ' + error);
+            }
+        }
+        
+        async function createTask() {
+            const target_username = document.getElementById('target_username').value;
+            const follower_count = parseInt(document.getElementById('follower_count').value);
+            
+            if (!target_username) {
+                alert('❌ Hedef kullanıcı adını girin');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/create_task`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({target_username, follower_count})
+                });
+                
+                if (response.ok) {
+                    alert('✅ Görev başlatıldı!');
+                    document.getElementById('target_username').value = '';
+                    loadTasks();
+                }
+            } catch (error) {
+                alert('❌ Hata: ' + error);
+            }
+        }
+        
+        async function addProxies() {
+            const input = document.getElementById('proxy_input').value;
+            const proxies = input.split('\n').filter(p => p.trim());
+            
+            for (let proxy of proxies) {
+                try {
+                    await fetch(`${API_URL}/add_proxy`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({proxy: proxy.trim()})
+                    });
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+            
+            alert(`✅ ${proxies.length} proxy eklendi!`);
+            document.getElementById('proxy_input').value = '';
+            loadProxies();
+        }
+        
+        async function scheduleTask() {
+            const target = document.getElementById('sched_target').value;
+            const count = document.getElementById('sched_count').value;
+            const time = document.getElementById('sched_time').value;
+            const repeat = document.getElementById('sched_repeat').value;
+            
+            try {
+                await fetch(`${API_URL}/schedule_task`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        target_username: target,
+                        follower_count: count,
+                        schedule_time: time,
+                        repeat_type: repeat
+                    })
+                });
+                
+                alert('✅ Görev zamanlandı!');
+            } catch (error) {
+                alert('❌ Hata: ' + error);
+            }
+        }
+        
+        async function checkHealth() {
+            try {
+                await fetch(`${API_URL}/health_check`, {method: 'POST'});
+                alert('✅ Sağlık kontrolü başladı');
+                setTimeout(loadAccounts, 2000);
+            } catch (error) {
+                alert('❌ Hata: ' + error);
+            }
+        }
+        
+        async function loadAccounts() {
+            try {
+                const response = await fetch(`${API_URL}/accounts`);
+                const accounts = await response.json();
+                
+                const tbody = document.getElementById('accounts_list');
+                tbody.innerHTML = '';
+                
+                accounts.forEach(acc => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${acc.username}</td>
+                            <td>${acc.type === 'bot' ? '🤖 Bot' : '👤 Gerçek'}</td>
+                            <td>${acc.health}</td>
+                            <td>${acc.actions_today}/200</td>
+                            <td>${acc.last_used}</td>
+                        </tr>
+                    `;
+                });
+            } catch (error) {
+                console.error(error);
+            }
+        }
+        
+        async function loadTasks() {
+            try {
+                const response = await fetch(`${API_URL}/tasks`);
+                const tasks = await response.json();
+                
+                const tbody = document.getElementById('tasks_list');
+                tbody.innerHTML = '';
+                
+                tasks.forEach(task => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>@${task.target}</td>
+                            <td>${task.count}</td>
+                            <td>${task.success}/${task.count}</td>
+                            <td>${task.status === 'pending' ? '⏳ Devam' : '✅ Tamamlandı'}</td>
+                            <td>${task.created}</td>
+                        </tr>
+                    `;
+                });
+            } catch (error) {
+                console.error(error);
+            }
+        }
+        
+        async function loadProxies() {
+            try {
+                const response = await fetch(`${API_URL}/proxies`);
+                const proxies = await response.json();
+                
+                const tbody = document.getElementById('proxies_list');
+                tbody.innerHTML = '';
+                
+                proxies.forEach(proxy => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${proxy.proxy}</td>
+                            <td>${proxy.status}</td>
+                        </tr>
+                    `;
+                });
+            } catch (error) {
+                console.error(error);
+            }
+        }
+        
+        async function loadAnalytics() {
+            try {
+                const response = await fetch(`${API_URL}/analytics`);
+                const data = await response.json();
+                
+                document.getElementById('analytics').innerHTML = `
+                    <div class="analytics-card">
+                        <h3>Tamamlanan Görevler (Bugün)</h3>
+                        <div class="number">${data.tasks_completed}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h3>Eklenen Takipçiler (Bugün)</h3>
+                        <div class="number">${data.followers_added}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h3>Banlanan Hesaplar</h3>
+                        <div class="number">${data.accounts_banned}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h3>Ortalama Başarı Oranı</h3>
+                        <div class="number">${data.success_rate}</div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error(error);
+            }
+        }
+        
+        function addLogLine(data) {
+            const container = document.getElementById('task_logs_container');
+            if (!container.querySelector('.log-container')) {
+                container.innerHTML = '<div class="log-container" id="logs"></div>';
+            }
+            
+            const logClass = `log-${data.type}`;
+            const logsDiv = document.getElementById('logs');
+            logsDiv.innerHTML += `<div class="log-line ${logClass}">[${data.timestamp}] ${data.message}</div>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        // İlk yükleme
+        loadAccounts();
+        loadTasks();
+        loadProxies();
+        loadAnalytics();
+        
+        // Otomatik yenileme
+        setInterval(loadAccounts, 10000);
+        setInterval(loadTasks, 5000);
+        setInterval(loadAnalytics, 30000);
+    </script>
+</body>
+</html>
